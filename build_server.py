@@ -78,7 +78,7 @@ def build_gocd_server(client):
     logger.info("Building GoCD Server")
     container = client.containers.run(
         'gocd/gocd-server:v20.1.0',
-        ports={'8153/tcp': 8153, '8154/tcp': 8154},
+        ports={'8153/tcp': ('127.0.0.1', 8153), '8154/tcp': ('127.0.0.1', 8154)},
         detach=True,
     )
     gocd_ip = None
@@ -173,6 +173,7 @@ def build_nginx(client, port_map):
         )],
         ports={'80/tcp': 80},
     )
+
 
 def gocd_update_job(args):
     """Runs self with --update as a GoCD job."""
