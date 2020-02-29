@@ -174,6 +174,25 @@ def build_nginx(client, port_map):
         ports={'80/tcp': 80},
     )
 
+def gocd_update_job(args):
+    """Runs self with --update as a GoCD job."""
+    # The nginx bind causes issues because docker looks on the host filesystem for nginx.conf
+    # need to include a volume to share data between nginx/gocd agent
+    cmd = f"python3 /api_builder/build_server.py --job /api_builder/{args.job} --gocd_host {args.gocd_host} --git_url {args.git_url} --state_file /api_builder/{state_file_name} --update"
+    configurator = GoCdConfigurator(HostRestClient(args.gocd_host, ssl=args.gocd_host.startswith('https://')))
+    pipeline = configurator\
+        .ensure_pipeline_group("defaultGroup")\
+        .ensure_replacement_of_pipeline(f'{args.pipeline_prefix}_update')\
+        .ensure_material(PipelineMaterial(last_built, "deploy"))
+    stage = pipeline.ensure_stage("deploy")
+    job = stage.ensure_job("build")
+    for line in cmd.split('\n'):
+        line = CMDS.findall(line)
+        if line and line[0]:
+            print(line)
+            job.add_task(ExecTask(line))
+    configurator.save_updated_config(save_config_locally=True, dry_run=False)
+
 
 def main():
     parser = argparse.ArgumentParser(description='HTTP Service Build Server')
@@ -242,20 +261,7 @@ def main():
         )
 
     # Update job
-    cmd = f"python3 /api_builder/build_server.py --job /api_builder/{args.job} --gocd_host {args.gocd_host} --git_url {args.git_url} --state_file /api_builder/{state_file_name} --update"
-    configurator = GoCdConfigurator(HostRestClient(args.gocd_host, ssl=args.gocd_host.startswith('https://')))
-    pipeline = configurator\
-    	.ensure_pipeline_group("defaultGroup")\
-    	.ensure_replacement_of_pipeline(f'{args.pipeline_prefix}_update')\
-        .ensure_material(PipelineMaterial(last_built, "deploy"))
-    stage = pipeline.ensure_stage("deploy")
-    job = stage.ensure_job("build")
-    for line in cmd.split('\n'):
-        line = CMDS.findall(line)
-        if line and line[0]:
-            print(line)
-            job.add_task(ExecTask(line))
-    configurator.save_updated_config(save_config_locally=True, dry_run=False)
+    # gocd_update_job(args)
 
     logger.debug("State:" + repr(dict(initial_state)))
     logger.info(f"Manually enable the GoCD Agent at {args.gocd_host}/go/agents")
