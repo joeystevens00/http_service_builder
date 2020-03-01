@@ -123,7 +123,7 @@ def to_hex(x):
     return "".join([hex(ord(c))[2:].zfill(2) for c in x])
 
 
-def build_nginx(client, port_map):
+def build_nginx(client, port_map, extra_nginx_locations=None):
     locations = []
     docker_host = [
         c for c in client.containers.list()\
@@ -140,6 +140,11 @@ def build_nginx(client, port_map):
             }}
         """)
     location_str = "\n".join(locations)
+    if extra_nginx_locations:
+        with open(extra_nginx_locations, 'r') as f:
+            extra_nginx_locations = f.read()
+    else:
+        extra_nginx_locations = ''
     nginx_conf = f"""
         server {{
         	listen 80 default_server;
@@ -148,8 +153,10 @@ def build_nginx(client, port_map):
         	index index.html index.htm index.nginx-debian.html;
         	server_name _;
             {location_str}
+            {extra_nginx_locations}
         }}
     """
+
     nginx_file = str(curdir.joinpath('nginx.conf'))
     with open(nginx_file, 'w') as f:
         f.write(nginx_conf)
@@ -206,6 +213,7 @@ def main():
     parser.add_argument('--skip_build_nginx', action='store_true')
     parser.add_argument('--update', action='store_true', help='Add/Modify GoCD pipelines, rebuild nginx if new branches')
     parser.add_argument('--state_file')
+    parser.add_argument('--extra_nginx_locations', help='Path to file with additional nginx location blocks to insert into the nginx config. Can contain anything that goes in an nginx server block.')
 
     args = parser.parse_args()
 
@@ -258,7 +266,8 @@ def main():
                 for pipeline, port_map in initial_state.items()
                 for branch, port in (port_map['port_map']
                 if isinstance(port_map, dict) else {}).items()
-            }
+            },
+            extra_nginx_locations=args.extra_nginx_locations,
         )
 
     # Update job
