@@ -162,7 +162,7 @@ def build_nginx(client, port_map):
         old_container[0].stop()
         old_container[0].remove()
     return client.containers.run(
-        'nginx',
+        'nginx:latest',
         detach=True,
         name='api_buiilder_nginx',
         mounts=[docker.types.Mount(

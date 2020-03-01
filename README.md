@@ -5,7 +5,7 @@ Builds every branch of an HTTP Service and maps it to the URL alias /$BRANCH/. I
 ### Example
 
 ```
-python3 build_server.py --job mormo_job.sh --git_url https://github.com/joeystevens00/mormo
+python3 build_server.py --job mormo_job.sh --git_url https://github.com/joeystevens00/mormo --verbose
 ```
 
 #### Job Script
